@@ -1,22 +1,24 @@
 import { LitElement, html, css } from "lit";
+import { t } from "../localization/localization.js"; // Import t
 
 class ConfirmationModal extends LitElement {
   static properties = {
-    message: { type: String }, // Message to display
+    message: { type: String },
     confirmLabel: { type: String },
     cancelLabel: { type: String },
   };
 
   constructor() {
     super();
-    this.message = "Are you sure?";
-    this.confirmLabel = "Proceed";
-    this.cancelLabel = "Cancel";
+    this.message = t("confirmGeneric");
+    this.confirmLabel = t("proceed");
+    this.cancelLabel = t("cancel");
   }
 
   static styles = css`
     :host {
-      display: block; /* Hidden by default, shown by parent */
+      display: block;
+      font-size: 14px;
     }
     .overlay {
       position: fixed;
@@ -32,43 +34,68 @@ class ConfirmationModal extends LitElement {
     }
     .modal {
       background-color: white;
-      padding: 2rem;
+      padding: 1rem;
       border-radius: 8px;
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-      min-width: 300px;
-      max-width: 500px;
       text-align: center;
     }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--primary-color);
+      text-align: left;
+      flex-grow: 1;
+    }
+    .close-button {
+      background: none;
+      border: none;
+      font-size: 2.5rem;
+      font-weight: 300;
+      color: var(--primary-color);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      width: auto;
+    }
     .modal p {
-      margin-bottom: 1.5rem;
-      font-size: 1.1em;
+      margin-block: 1rem;
+      font-size: 1rem;
       color: #333;
+      line-height: 1.4;
+      text-align: left;
     }
     .buttons {
       display: flex;
-      justify-content: center;
-      gap: 1rem;
+      flex-direction: column;
+      gap: 0.5rem;
     }
     button {
       padding: 0.7rem 1.5rem;
       border-radius: 4px;
-      border: none;
       cursor: pointer;
       font-weight: 500;
-      font-size: 1em;
+      font-size: 1rem;
       transition: opacity 0.2s;
+      width: 100%;
+      box-sizing: border-box;
+      border: none;
     }
     button:hover {
       opacity: 0.8;
     }
     .confirm-btn {
-      background-color: var(--primary-color, #ff6200);
+      background-color: var(--primary-color);
       color: white;
     }
     .cancel-btn {
-      background-color: #eee;
-      color: #333;
-      border: 1px solid #ccc;
+      background-color: white;
+      color: #525199;
+      border: 1px solid #525199;
     }
   `;
 
@@ -81,11 +108,21 @@ class ConfirmationModal extends LitElement {
   }
 
   render() {
+    const title = t("confirmTitle", null) || t("confirmGeneric");
+
     return html`
       <div class="overlay" @click=${this._handleCancel}>
-        <!-- Allow closing by clicking overlay -->
         <div class="modal" @click=${(e) => e.stopPropagation()}>
-          <!-- Prevent overlay click when clicking modal -->
+          <div class="modal-header">
+            <span class="modal-title">${title}</span>
+            <button
+              class="close-button"
+              @click=${this._handleCancel}
+              title="${t("close") || "Close"}"
+            >
+              &times;
+            </button>
+          </div>
           <p>${this.message}</p>
           <div class="buttons">
             <button class="confirm-btn" @click=${this._handleConfirm}>

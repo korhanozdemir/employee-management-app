@@ -4,48 +4,58 @@ import { store } from "../state/store.js"; // Import the store
 import { classMap } from "lit/directives/class-map.js"; // Import classMap
 import { Router } from "@vaadin/router"; // Import Router for navigation
 import "./confirmation-modal.js"; // Import the modal component
+import { t } from "../localization/localization.js"; // Import t
+import "./employee-card.js"; // Import the new card component
+import "./pagination-controls.js"; // Import the new pagination component
+import "./employee-table.js"; // Import the new table component
 
 const ITEMS_PER_PAGE = 8; // Define how many items per page, like in mockup
 
 class EmployeeList extends LitElement {
   static properties = {
-    _employees: { state: true }, // Internal reactive state
-    _viewMode: { state: true }, // Add state for view mode ('table' or 'list')
-    _currentPage: { state: true }, // Current page number (1-based)
-    _searchTerm: { state: true }, // State for the search term
-    _showDeleteModal: { state: true }, // State to show/hide delete modal
-    _employeeToDeleteId: { state: true }, // ID of employee pending deletion
-    // Add properties for search, pagination, view mode later
+    _employees: { state: true },
+    _viewMode: { state: true },
+    _currentPage: { state: true },
+    _searchTerm: { state: true },
+    _showDeleteModal: { state: true },
+    _employeeToDeleteId: { state: true },
+    _selectedIds: { state: true },
+    _showBulkDeleteModal: { state: true },
   };
 
   constructor() {
     super();
     this._employees = [];
-    this._viewMode = "table"; // Default to table view
-    this._currentPage = 1; // Start at page 1
-    this._searchTerm = ""; // Initialize search term
-    this._showDeleteModal = false; // Modal initially hidden
+    this._viewMode = "table";
+    this._currentPage = 1;
+    this._searchTerm = "";
+    this._showDeleteModal = false;
     this._employeeToDeleteId = null;
+    this._selectedIds = new Set();
+    this._showBulkDeleteModal = false;
     this._unsubscribe = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    // Subscribe to store updates
     this._unsubscribe = store.subscribe((state) => {
+      const oldEmployeeCount = this._employees.length;
       this._employees = state.employees;
-      // Reset to page 1 if employees change (e.g., after delete/add/search)
-      // We might refine this logic later based on specific actions
-      this._currentPage = 1;
+      if (this._employees.length !== oldEmployeeCount) {
+        this._selectedIds = new Set();
+        const totalPages = this._getTotalPages();
+        if (this._currentPage > totalPages && totalPages > 0) {
+          this._currentPage = totalPages;
+        } else if (totalPages === 0) {
+          this._currentPage = 1;
+        }
+      }
     });
-    // Initial fetch in case the component connects after the first state emission
-    // (subscribe callback already handles this, but good practice)
     this._employees = store.getEmployees();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    // Unsubscribe from store updates to prevent memory leaks
     if (this._unsubscribe) {
       this._unsubscribe();
     }
@@ -54,105 +64,89 @@ class EmployeeList extends LitElement {
   static styles = css`
     :host {
       display: block;
-      padding: 1rem;
+      padding: 0 3rem;
+      font-size: 14px;
     }
-    .list-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
+    @media (max-width: 600px) {
+      :host {
+        padding: 0 1rem;
+      }
     }
     h2 {
       margin: 0;
-      color: var(--primary-color, #ff6200);
+      color: var(--primary-color);
+      font-size: 24px;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
     }
     .controls {
       display: flex;
       align-items: center;
       gap: 1rem;
-      flex-grow: 1; /* Allow search to grow */
-      justify-content: flex-end;
     }
     .search-input {
       padding: 0.5rem 0.8rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 0.95em;
-      min-width: 200px; /* Give it some base width */
-      flex-grow: 1; /* Allow it to take available space */
-      max-width: 350px;
+      font-size: 11px;
+      min-width: 150px;
+      flex-basis: 200px;
+      margin-left: auto;
     }
     .view-toggle button {
       background: none;
       border: none;
-      padding: 0.5rem;
+      padding: 0;
       cursor: pointer;
-      font-size: 1.5em; /* Make icons larger */
-      color: #ccc; /* Default inactive color */
+      color: #ccc;
       transition: color 0.2s ease-in-out;
-      line-height: 1; /* Align icons better */
+      line-height: 1;
+      opacity: 0.6;
     }
-    .view-toggle button.active {
-      color: var(--primary-color, #ff6200); /* Active color */
-    }
-    .view-toggle button:hover {
-      color: var(--secondary-color, #ffb587);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow like mockup */
-      background-color: #fff;
-      border-radius: 8px; /* Rounded corners */
-      overflow: hidden; /* Ensures radius applies to content */
-    }
-    th,
-    td {
-      padding: 0.8rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid #eee; /* Light separator lines */
+    .view-toggle button img {
+      height: 20px;
+      width: 18px;
       vertical-align: middle;
     }
-    th {
-      background-color: #f8f9fa; /* Light header background */
-      font-weight: 600;
-      font-size: 0.9em;
-      color: #555;
+    .view-toggle .icon-list img {
+      height: 24px;
+      width: 24px;
     }
-    tr:last-child td {
-      border-bottom: none;
+    .view-toggle button.active {
+      color: var(--primary-color);
+      opacity: 1;
     }
-    tr:hover td {
-      background-color: #f1f1f1;
+    .view-toggle button:hover {
+      color: var(--secondary-color);
+      opacity: 1;
     }
-    .actions button {
-      background: none;
-      border: none;
+    .delete-selected-btn {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--secondary-color);
+      background-color: transparent;
+      color: var(--secondary-color);
+      border-radius: 4px;
       cursor: pointer;
-      padding: 0.2rem;
-      margin: 0 0.3rem;
-      color: var(--primary-color, #ff6200);
-      font-size: 1.1em;
+      font-size: 11px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
     }
-    .actions button:hover {
-      opacity: 0.7;
+    .delete-selected-btn img {
+      height: 14px;
+      width: 14px;
     }
-    /* Placeholder for icons */
-    .icon-edit::before {
-      content: "✏️";
+    .delete-selected-btn:hover:not(:disabled) {
+      background-color: var(--secondary-color-light-hover);
     }
-    .icon-delete::before {
-      content: "🗑️";
+    .delete-selected-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+      border-color: #ddd;
+      color: #aaa;
     }
-    /* Placeholder icons for view toggle */
-    .icon-table::before {
-      content: "▦";
-    }
-    .icon-list::before {
-      content: "≡";
-    }
-    /* TODO: Add styles for list view items when implemented */
     .list-view-placeholder {
       padding: 2rem;
       text-align: center;
@@ -160,122 +154,37 @@ class EmployeeList extends LitElement {
       margin-top: 1rem;
       color: #777;
     }
-    /* TODO: Add styles for list view, search, pagination */
-    /* --- Pagination Styles --- */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-top: 2rem;
-      padding: 1rem 0;
-      user-select: none; /* Prevent text selection */
-    }
-    .pagination button,
-    .pagination .page-number {
-      background-color: #fff;
-      border: 1px solid #ddd;
-      color: var(--primary-color, #ff6200);
-      padding: 0.5rem 1rem;
-      margin: 0 0.25rem;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-      font-weight: 500;
-      min-width: 40px; /* Ensure buttons have some width */
-      text-align: center;
-    }
-    .pagination button:hover:not(:disabled),
-    .pagination .page-number:hover {
-      background-color: var(--secondary-color, #ffb587);
-      border-color: var(--secondary-color, #ffb587);
-      color: #fff;
-    }
-    .pagination button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-      color: #aaa;
-      background-color: #f5f5f5;
-    }
-    .pagination span {
-      margin: 0 1rem;
-      font-weight: 500;
-      color: #555;
-    }
-    .pagination .page-number.active {
-      background-color: var(--primary-color, #ff6200);
-      border-color: var(--primary-color, #ff6200);
-      color: white;
-      cursor: default;
-    }
-    .pagination .ellipsis {
-      padding: 0.5rem 0.5rem;
-      color: #aaa;
-      cursor: default;
-      border: none;
-      background: none;
-    }
-    /* --- List View Styles --- */
-    .list-view {
+    .list-view-grid {
       display: grid;
-      gap: 1rem;
+      gap: 1.5rem;
       margin-top: 1rem;
-      /* Adjust columns based on screen size */
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
-    .employee-card {
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      padding: 1rem 1.5rem;
-      display: flex;
-      flex-direction: column; /* Stack content vertically */
-      gap: 0.5rem; /* Space between items */
-      border-left: 5px solid var(--primary-color, #ff6200); /* Accent border */
-    }
-    .employee-card header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    .employee-card h3 {
-      margin: 0;
-      font-size: 1.2em;
-      color: #333;
-    }
-    .employee-card .info {
-      font-size: 0.95em;
-      color: #555;
-      line-height: 1.4;
-    }
-    .employee-card .info strong {
-      color: #333;
-      margin-right: 0.3em;
-    }
-    /* Use existing .actions styles for buttons inside card */
-    .employee-card .actions {
-      margin-top: 0.5rem;
-      align-self: flex-end; /* Push actions to the right */
+    .no-results {
+      padding: 2rem;
+      text-align: center;
+      margin-top: 1rem;
+      color: #777;
     }
   `;
 
   _handleSearchInput(event) {
     this._searchTerm = event.target.value;
-    this._currentPage = 1; // Reset to first page on search
+    this._currentPage = 1;
+    this._selectedIds = new Set();
   }
 
   _setViewMode(mode) {
     this._viewMode = mode;
-    this._currentPage = 1; // Reset page when changing view
+    this._currentPage = 1;
+    this._selectedIds = new Set();
   }
 
   _handleEdit(employeeId) {
-    // Use Router.go to navigate to the edit page
     Router.go(`/edit-employee/${employeeId}`);
   }
 
   _handleDelete(employeeId) {
-    // Set state to show the modal and store the ID
     this._employeeToDeleteId = employeeId;
     this._showDeleteModal = true;
   }
@@ -296,7 +205,47 @@ class EmployeeList extends LitElement {
     this._employeeToDeleteId = null;
   }
 
-  // --- Pagination Logic ---
+  _handleBulkDeleteClick() {
+    if (this._selectedIds.size > 0) {
+      this._showBulkDeleteModal = true;
+    }
+  }
+  _confirmBulkDelete() {
+    this._selectedIds.forEach((id) => {
+      store.deleteEmployee(id);
+    });
+    this._closeBulkDeleteModal();
+  }
+  _cancelBulkDelete() {
+    this._closeBulkDeleteModal();
+  }
+  _closeBulkDeleteModal() {
+    this._showBulkDeleteModal = false;
+  }
+
+  _handleRowSelectionChange(event) {
+    const { employeeId, isChecked } = event.detail;
+    const updatedSelectedIds = new Set(this._selectedIds);
+    if (isChecked) {
+      updatedSelectedIds.add(employeeId);
+    } else {
+      updatedSelectedIds.delete(employeeId);
+    }
+    this._selectedIds = updatedSelectedIds;
+  }
+
+  _handleSelectAllChange(event) {
+    const { isChecked } = event.detail;
+    const currentPageIds = this._getCurrentPageEmployees().map((emp) => emp.id);
+    const updatedSelectedIds = new Set(this._selectedIds);
+
+    if (isChecked) {
+      currentPageIds.forEach((id) => updatedSelectedIds.add(id));
+    } else {
+      currentPageIds.forEach((id) => updatedSelectedIds.delete(id));
+    }
+    this._selectedIds = updatedSelectedIds;
+  }
 
   get _filteredEmployees() {
     if (!this._searchTerm) {
@@ -315,7 +264,8 @@ class EmployeeList extends LitElement {
   }
 
   _getTotalPages() {
-    return Math.ceil(this._filteredEmployees.length / ITEMS_PER_PAGE);
+    const count = this._filteredEmployees.length;
+    return count === 0 ? 1 : Math.ceil(count / ITEMS_PER_PAGE);
   }
 
   _getCurrentPageEmployees() {
@@ -324,230 +274,58 @@ class EmployeeList extends LitElement {
     return this._filteredEmployees.slice(startIndex, endIndex);
   }
 
+  _handlePageChange(event) {
+    this._goToPage(event.detail.page);
+  }
+
   _goToPage(pageNumber) {
     const totalPages = this._getTotalPages();
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
+    if (
+      pageNumber >= 1 &&
+      pageNumber <= totalPages &&
+      pageNumber !== this._currentPage
+    ) {
       this._currentPage = pageNumber;
+      this._selectedIds = new Set();
     }
   }
 
-  _goToPrevPage() {
-    this._goToPage(this._currentPage - 1);
-  }
-
-  _goToNextPage() {
-    this._goToPage(this._currentPage + 1);
-  }
-
-  /**
-   * Generates an array of page numbers/ellipses to display.
-   * Logic: Show first, last, current, and 1 neighbor on each side, with ellipses.
-   */
-  _getPageNumbers() {
-    const total = this._getTotalPages();
-    const current = this._currentPage;
-    const delta = 1; // How many neighbors to show around current page
-    const range = [];
-
-    if (total <= 1) return [];
-
-    // Always show first page
-    range.push(1);
-
-    // Ellipsis after first page?
-    if (current > delta + 2) {
-      range.push("...");
-    }
-
-    // Pages around current page
-    let start = Math.max(2, current - delta);
-    let end = Math.min(total - 1, current + delta);
-
-    for (let i = start; i <= end; i++) {
-      range.push(i);
-    }
-
-    // Ellipsis before last page?
-    if (current < total - delta - 1) {
-      range.push("...");
-    }
-
-    // Always show last page (if different from first)
-    if (total > 1) {
-      range.push(total);
-    }
-
-    // Remove duplicates that might occur if ranges overlap (e.g., total = 5)
-    return [...new Set(range)];
-  }
-
-  // --- Template Partials ---
-
-  _renderTableView() {
+  _getHeaderCheckboxState() {
     const currentPageEmployees = this._getCurrentPageEmployees();
-    return html`
-      <table>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                disabled
-                title="Select all - Not implemented"
-              />
-            </th>
-            <!-- Placeholder checkbox -->
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Date of Employment</th>
-            <th>Date of Birth</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Department</th>
-            <th>Position</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${map(
-            currentPageEmployees,
-            (emp) => html`
-              <tr>
-                <td>
-                  <input
-                    type="checkbox"
-                    disabled
-                    title="Select row - Not implemented"
-                  />
-                </td>
-                <!-- Placeholder checkbox -->
-                <td>${emp.firstName}</td>
-                <td>${emp.lastName}</td>
-                <td>${emp.dateOfEmployment}</td>
-                <!-- TODO: Format date -->
-                <td>${emp.dateOfBirth}</td>
-                <!-- TODO: Format date -->
-                <td>${emp.phoneNumber}</td>
-                <td>${emp.email}</td>
-                <td>${emp.department}</td>
-                <td>${emp.position}</td>
-                <td class="actions">
-                  <!-- Use buttons or links for actions -->
-                  <button
-                    @click=${() => this._handleEdit(emp.id)}
-                    title="Edit"
-                    class="icon-edit"
-                  ></button>
-                  <button
-                    @click=${() => this._handleDelete(emp.id)}
-                    title="Delete"
-                    class="icon-delete"
-                  ></button>
-                </td>
-              </tr>
-            `
-          )}
-          ${currentPageEmployees.length === 0
-            ? html`<tr>
-                <td
-                  colspan="10"
-                  style="text-align: center; padding: 2rem; color: #777;"
-                >
-                  No employees match your search criteria.
-                </td>
-              </tr>`
-            : ""}
-        </tbody>
-      </table>
-    `;
+    if (currentPageEmployees.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+    const currentPageIds = currentPageEmployees.map((emp) => emp.id);
+    const selectedOnPageCount = currentPageIds.filter((id) =>
+      this._selectedIds.has(id)
+    ).length;
+
+    return {
+      checked: selectedOnPageCount === currentPageIds.length,
+      indeterminate:
+        selectedOnPageCount > 0 && selectedOnPageCount < currentPageIds.length,
+    };
   }
 
   _renderListView() {
-    const currentPageEmployees = this._getCurrentPageEmployees();
+    const employeesToRender = this._getCurrentPageEmployees();
 
-    if (currentPageEmployees.length === 0) {
-      return html`<div class="list-view-placeholder">
-        No employees match your search criteria.
-      </div>`;
+    if (employeesToRender.length === 0) {
+      return html`<div class="no-results">${t("noEmployeesFound")}</div>`;
     }
 
     return html`
-      <div class="list-view">
+      <div class="list-view-grid">
         ${map(
-          currentPageEmployees,
-          (emp) => html`
-            <div class="employee-card">
-              <header>
-                <h3>${emp.firstName} ${emp.lastName}</h3>
-                <div class="actions">
-                  <button
-                    @click=${() => this._handleEdit(emp.id)}
-                    title="Edit"
-                    class="icon-edit"
-                  ></button>
-                  <button
-                    @click=${() => this._handleDelete(emp.id)}
-                    title="Delete"
-                    class="icon-delete"
-                  ></button>
-                </div>
-              </header>
-              <div class="info">
-                <div><strong>Position:</strong> ${emp.position}</div>
-                <div><strong>Department:</strong> ${emp.department}</div>
-                <div>
-                  <strong>Email:</strong>
-                  <a href="mailto:${emp.email}">${emp.email}</a>
-                </div>
-                <div><strong>Phone:</strong> ${emp.phoneNumber}</div>
-                <!-- Optionally add more fields like DoB, Employment Date -->
-              </div>
-            </div>
+          employeesToRender,
+          (employee) => html`
+            <employee-card
+              .employee=${employee}
+              @edit-employee=${(e) => this._handleEdit(e.detail.employeeId)}
+              @delete-employee=${(e) => this._handleDelete(e.detail.employeeId)}
+            ></employee-card>
           `
         )}
-      </div>
-    `;
-  }
-
-  _renderPagination() {
-    const totalPages = this._getTotalPages();
-    if (totalPages <= 1) return ""; // Don't show pagination if only one page
-
-    const pageNumbers = this._getPageNumbers();
-
-    return html`
-      <div class="pagination">
-        <button
-          @click=${this._goToPrevPage}
-          ?disabled=${this._currentPage === 1}
-          title="Previous Page"
-        >
-          &lt;
-        </button>
-
-        ${map(pageNumbers, (page) =>
-          page === "..."
-            ? html`<span class="ellipsis">...</span>`
-            : html`
-                <button
-                  class="page-number ${this._currentPage === page
-                    ? "active"
-                    : ""}"
-                  @click=${() => this._goToPage(page)}
-                  ?disabled=${this._currentPage === page}
-                >
-                  ${page}
-                </button>
-              `
-        )}
-
-        <button
-          @click=${this._goToNextPage}
-          ?disabled=${this._currentPage === totalPages}
-          title="Next Page"
-        >
-          &gt;
-        </button>
       </div>
     `;
   }
@@ -555,53 +333,107 @@ class EmployeeList extends LitElement {
   render() {
     const tableViewClasses = { active: this._viewMode === "table" };
     const listViewClasses = { active: this._viewMode === "list" };
+    const isAnythingSelected = this._selectedIds.size > 0;
 
-    // Find the employee name for the modal message
     const employeeToDelete = this._employeeToDeleteId
       ? this._employees.find((emp) => emp.id === this._employeeToDeleteId)
       : null;
     const deleteMessage = employeeToDelete
-      ? `Selected Employee record of ${employeeToDelete.firstName} ${employeeToDelete.lastName} will be deleted`
-      : "Are you sure you want to delete this record?"; // Fallback
+      ? t("confirmDeleteMessage", {
+          name: `${employeeToDelete.firstName} ${employeeToDelete.lastName}`,
+        })
+      : t("confirmGeneric");
+
+    const bulkDeleteMessage = t("confirmBulkDeleteMessage", {
+      count: this._selectedIds.size,
+    });
+
+    const headerCheckboxState = this._getHeaderCheckboxState();
 
     return html`
       <div class="list-header">
-        <h2>Employee List</h2>
+        <h2>${t("employeeList")}</h2>
         <div class="controls">
+          <button
+            class="delete-selected-btn"
+            ?disabled=${!isAnythingSelected}
+            @click=${this._handleBulkDeleteClick}
+            title="${t("deleteSelectedTooltip", {
+              count: this._selectedIds.size,
+            })}"
+          >
+            <img src="/icons/delete-icon.png" alt="Delete" />
+            (${this._selectedIds.size})
+          </button>
           <input
             type="search"
             class="search-input"
-            placeholder="Search employees..."
+            placeholder=${t("searchPlaceholder")}
             .value=${this._searchTerm}
             @input=${this._handleSearchInput}
           />
           <div class="view-toggle">
             <button
-              title="Table View"
+              title=${t("tableView")}
               class="icon-table ${classMap(tableViewClasses)}"
               @click=${() => this._setViewMode("table")}
-            ></button>
+            >
+              <img src="/icons/table-icon.png" alt="Table View" />
+            </button>
             <button
-              title="List View"
+              title=${t("listView")}
               class="icon-list ${classMap(listViewClasses)}"
               @click=${() => this._setViewMode("list")}
-            ></button>
+            >
+              <img src="/icons/list-icon.png" alt="List View" />
+            </button>
           </div>
         </div>
       </div>
 
       ${this._viewMode === "table"
-        ? this._renderTableView()
+        ? html`
+            <employee-table
+              .employees=${this._getCurrentPageEmployees()}
+              .selectedIds=${this._selectedIds}
+              .isSelectAllChecked=${headerCheckboxState.checked}
+              .isSelectAllIndeterminate=${headerCheckboxState.indeterminate}
+              @edit-employee=${(e) => this._handleEdit(e.detail.employeeId)}
+              @delete-employee=${(e) => this._handleDelete(e.detail.employeeId)}
+              @row-selection-change=${this._handleRowSelectionChange}
+              @select-all-change=${this._handleSelectAllChange}
+            ></employee-table>
+          `
         : this._renderListView()}
-      ${this._renderPagination()}
 
-      <!-- Render modal conditionally -->
+      <pagination-controls
+        .currentPage=${this._currentPage}
+        .totalPages=${this._getTotalPages()}
+        @page-change=${this._handlePageChange}
+      ></pagination-controls>
+
       ${this._showDeleteModal
         ? html`
             <confirmation-modal
               .message=${deleteMessage}
+              confirmLabel=${t("proceed")}
+              cancelLabel=${t("cancel")}
               @confirm=${this._confirmDelete}
               @cancel=${this._cancelDelete}
+            >
+            </confirmation-modal>
+          `
+        : ""}
+      ${this._showBulkDeleteModal
+        ? html`
+            <confirmation-modal
+              .message=${bulkDeleteMessage}
+              confirmLabel="${t("deleteSelectedButtonLabel", {
+                count: this._selectedIds.size,
+              })}"
+              cancelLabel=${t("cancel")}
+              @confirm=${this._confirmBulkDelete}
+              @cancel=${this._cancelBulkDelete}
             >
             </confirmation-modal>
           `

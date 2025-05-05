@@ -2,11 +2,12 @@ import { LitElement, html, css } from "lit";
 import { Router } from "@vaadin/router";
 import { store } from "../state/store.js";
 import "./confirmation-modal.js"; // Import the modal
+import { t } from "../localization/localization.js"; // Import t
 
 class EmployeeForm extends LitElement {
   static properties = {
-    location: { type: Object }, // Provided by Vaadin Router
-    _employee: { state: true }, // Holds the employee data being edited
+    location: { type: Object },
+    _employee: { state: true },
     _isEditMode: { state: true },
     // Form field states
     _firstName: { state: true },
@@ -18,8 +19,9 @@ class EmployeeForm extends LitElement {
     _department: { state: true },
     _position: { state: true },
     _isLoading: { state: true },
-    _showUpdateModal: { state: true }, // State for update confirmation modal
-    _pendingUpdateData: { state: true }, // Data waiting for confirmation
+    _showUpdateModal: { state: true },
+    _pendingUpdateData: { state: true },
+    _showValidation: { state: true },
   };
 
   constructor() {
@@ -27,8 +29,9 @@ class EmployeeForm extends LitElement {
     this._isEditMode = false;
     this._employee = null;
     this._isLoading = false;
-    this._showUpdateModal = false; // Initialize modal state
+    this._showUpdateModal = false;
     this._pendingUpdateData = null;
+    this._showValidation = false;
     this._resetFormFields();
   }
 
@@ -52,7 +55,7 @@ class EmployeeForm extends LitElement {
         this._loadEmployeeData(employeeId);
       } else {
         this._employee = null;
-        this._resetFormFields(); // Reset for Add mode
+        this._resetFormFields();
       }
     }
   }
@@ -106,9 +109,10 @@ class EmployeeForm extends LitElement {
     event.preventDefault();
     const form = event.target;
     if (!form.checkValidity()) {
-      // Basic HTML5 validation failed
-      alert("Please fill out all required fields correctly.");
-      form.reportValidity(); // Show browser validation messages
+      // Mark that validation styles should be shown now
+      this._showValidation = true;
+      alert(t("requiredField"));
+      form.reportValidity();
       return;
     }
 
@@ -131,10 +135,12 @@ class EmployeeForm extends LitElement {
       // Add directly for new employees
       try {
         store.addEmployee(employeeData);
-        Router.go("/employees"); // Navigate back after add
+        Router.go("/employees");
       } catch (error) {
         // Handle potential errors from the store (like duplicate email)
         // The store currently uses alert(), but a more robust system could be used.
+        // Ensure validation styles are shown even if store errors occur after submit attempt
+        this._showValidation = true;
         console.error("Error adding employee:", error);
       }
     }
@@ -153,7 +159,7 @@ class EmployeeForm extends LitElement {
         Router.go("/employees");
       } catch (error) {
         console.error("Error updating employee:", error);
-        this._closeUpdateModal(); // Close modal even if store update failed (store alerts)
+        this._closeUpdateModal();
       }
     } else {
       console.error("Missing data for update confirmation.");
@@ -179,24 +185,26 @@ class EmployeeForm extends LitElement {
       background-color: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      font-size: 14px;
     }
     h2 {
       margin-top: 0;
       margin-bottom: 1.5rem;
-      color: var(--primary-color, #ff6200);
+      color: var(--primary-color);
       text-align: center;
+      font-size: 1.6rem;
     }
     form {
       display: grid;
-      grid-template-columns: 1fr 1fr; /* Two columns */
-      gap: 1rem 1.5rem; /* Row and column gap */
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem 1.5rem;
     }
     label {
       font-weight: 500;
       margin-bottom: 0.25rem;
       display: block;
       color: #333;
-      font-size: 0.9em;
+      font-size: 14px;
     }
     input,
     select {
@@ -204,21 +212,21 @@ class EmployeeForm extends LitElement {
       padding: 0.6rem 0.8rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 1em;
-      box-sizing: border-box; /* Include padding in width */
+      font-size: 14px;
+      box-sizing: border-box;
     }
     input:focus,
     select:focus {
       outline: none;
-      border-color: var(--primary-color, #ff6200);
-      box-shadow: 0 0 0 2px var(--secondary-color, #ffb587);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px var(--secondary-color);
     }
     /* Span fields across both columns if needed */
     .form-field-full {
       grid-column: 1 / -1;
     }
     .form-actions {
-      grid-column: 1 / -1; /* Span full width */
+      grid-column: 1 / -1;
       display: flex;
       justify-content: flex-end;
       gap: 1rem;
@@ -232,14 +240,14 @@ class EmployeeForm extends LitElement {
       border: none;
       cursor: pointer;
       font-weight: 500;
-      font-size: 1em;
+      font-size: 14px;
       transition: opacity 0.2s;
     }
     button:hover {
       opacity: 0.8;
     }
     button[type="submit"] {
-      background-color: var(--primary-color, #ff6200);
+      background-color: var(--primary-color);
       color: white;
     }
     .cancel-btn {
@@ -247,146 +255,149 @@ class EmployeeForm extends LitElement {
       color: #333;
       border: 1px solid #ccc;
     }
-    /* Basic validation styling */
-    input:invalid {
-      border-color: #dc3545; /* Red border for invalid */
-    }
   `;
 
   render() {
-    const title = this._isEditMode ? "Edit Employee" : "Add New Employee";
+    const title = this._isEditMode ? t("editEmployee") : t("addNewEmployee");
 
     if (this._isLoading) {
-      return html`<p>Loading employee data...</p>`;
+      return html`<p>${t("loading")}</p>`;
     }
 
     const updateMessage = this._pendingUpdateData
-      ? `Are you sure you want to update the record for ${this._pendingUpdateData.firstName} ${this._pendingUpdateData.lastName}?`
-      : "Are you sure you want to update this record?"; // Fallback
+      ? t("confirmUpdateMessage", {
+          name: `${this._pendingUpdateData.firstName} ${this._pendingUpdateData.lastName}`,
+        })
+      : t("confirmGeneric");
 
     return html`
-      <h2>${title}</h2>
-      <form @submit=${this._handleSubmit}>
-        <div class="form-field">
-          <label for="firstName">First Name</label>
-          <input
-            id="firstName"
-            name="firstName"
-            type="text"
-            required
-            .value=${this._firstName}
-            @input=${this._handleInput}
-          />
-        </div>
+      <div ?show-validation=${this._showValidation}>
+        <h2>${title}</h2>
+        <form @submit=${this._handleSubmit}>
+          <div class="form-field">
+            <label for="firstName">${t("firstName")}</label>
+            <input
+              id="firstName"
+              name="firstName"
+              type="text"
+              required
+              .value=${this._firstName}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field">
-          <label for="lastName">Last Name</label>
-          <input
-            id="lastName"
-            name="lastName"
-            type="text"
-            required
-            .value=${this._lastName}
-            @input=${this._handleInput}
-          />
-        </div>
+          <div class="form-field">
+            <label for="lastName">${t("lastName")}</label>
+            <input
+              id="lastName"
+              name="lastName"
+              type="text"
+              required
+              .value=${this._lastName}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field">
-          <label for="dateOfEmployment">Date of Employment</label>
-          <input
-            id="dateOfEmployment"
-            name="dateOfEmployment"
-            type="date"
-            required
-            .value=${this._dateOfEmployment}
-            @input=${this._handleInput}
-          />
-        </div>
+          <div class="form-field">
+            <label for="dateOfEmployment">${t("dateOfEmployment")}</label>
+            <input
+              id="dateOfEmployment"
+              name="dateOfEmployment"
+              type="date"
+              required
+              .value=${this._dateOfEmployment}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field">
-          <label for="dateOfBirth">Date of Birth</label>
-          <input
-            id="dateOfBirth"
-            name="dateOfBirth"
-            type="date"
-            required
-            .value=${this._dateOfBirth}
-            @input=${this._handleInput}
-          />
-        </div>
+          <div class="form-field">
+            <label for="dateOfBirth">${t("dateOfBirth")}</label>
+            <input
+              id="dateOfBirth"
+              name="dateOfBirth"
+              type="date"
+              required
+              .value=${this._dateOfBirth}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field form-field-full">
-          <label for="phoneNumber">Phone Number</label>
-          <input
-            id="phoneNumber"
-            name="phoneNumber"
-            type="tel"
-            pattern="^s*(?:+?(d{1,3}))?[-. (]*(d{3})[-. )]*(d{3})[-. ]*(d{4})(?: *x(d+))?s*$"
-            title="Enter a
-          valid phone number (e.g., +1(555)123-4567)"
-            required
-            .value=${this._phoneNumber}
-            @input=${this._handleInput}
-          />
-        </div>
+          <div class="form-field form-field-full">
+            <label for="phoneNumber">${t("phoneNumber")}</label>
+            <input
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              pattern="^s*(?:+?(d{1,3}))?[-.s(]*(d{3})[-.s)]*(d{3})[-.s]*(d{4})(?: *x(d+))?s*$"
+              title="Enter a valid phone number (e.g., +1 (555) 123-4567 Ext. 123)"
+              required
+              .value=${this._phoneNumber}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field form-field-full">
-          <label for="email">Email Address</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            .value=${this._email}
-            @input=${this._handleInput}
-          />
-        </div>
+          <div class="form-field form-field-full">
+            <label for="email">${t("emailAddress")}</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              .value=${this._email}
+              @input=${this._handleInput}
+            />
+          </div>
 
-        <div class="form-field">
-          <label for="department">Department</label>
-          <select
-            id="department"
-            name="department"
-            required
-            .value=${this._department}
-            @input=${this._handleInput}
-          >
-            <option value="Analytics">Analytics</option>
-            <option value="Tech">Tech</option>
-          </select>
-        </div>
+          <div class="form-field">
+            <label for="department">${t("department")}</label>
+            <select
+              id="department"
+              name="department"
+              required
+              .value=${this._department}
+              @input=${this._handleInput}
+            >
+              <option value="Analytics">Analytics</option>
+              <option value="Tech">Tech</option>
+            </select>
+          </div>
 
-        <div class="form-field">
-          <label for="position">Position</label>
-          <select
-            id="position"
-            name="position"
-            required
-            .value=${this._position}
-            @input=${this._handleInput}
-          >
-            <option value="Junior">Junior</option>
-            <option value="Medior">Medior</option>
-            <option value="Senior">Senior</option>
-          </select>
-        </div>
+          <div class="form-field">
+            <label for="position">${t("position")}</label>
+            <select
+              id="position"
+              name="position"
+              required
+              .value=${this._position}
+              @input=${this._handleInput}
+            >
+              <option value="Junior">Junior</option>
+              <option value="Medior">Medior</option>
+              <option value="Senior">Senior</option>
+            </select>
+          </div>
 
-        <div class="form-actions">
-          <button type="button" class="cancel-btn" @click=${this._handleCancel}>
-            Cancel
-          </button>
-          <button type="submit">
-            ${this._isEditMode ? "Update" : "Add"} Employee
-          </button>
-        </div>
-      </form>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="cancel-btn"
+              @click=${this._handleCancel}
+            >
+              ${t("cancel")}
+            </button>
+            <button type="submit">
+              ${this._isEditMode ? t("update") : t("add")}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      <!-- Render update confirmation modal conditionally -->
       ${this._showUpdateModal
         ? html`
             <confirmation-modal
               .message=${updateMessage}
-              confirmLabel="Update"
+              confirmLabel=${t("update")}
+              cancelLabel=${t("cancel")}
               @confirm=${this._confirmUpdate}
               @cancel=${this._cancelUpdate}
             >

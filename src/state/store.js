@@ -2,7 +2,6 @@
 
 let state = {
   employees: [
-    // Add some initial mock data for development
     {
       id: "1",
       firstName: "John",
@@ -25,7 +24,6 @@ let state = {
       department: "Analytics",
       position: "Medior",
     },
-    // Add more employees for pagination testing
     {
       id: "3",
       firstName: "Peter",
@@ -102,7 +100,7 @@ let state = {
       email: "michael.brown@example.com",
       department: "Tech",
       position: "Junior",
-    }, // 9th employee
+    },
     {
       id: "10",
       firstName: "Olivia",
@@ -113,11 +111,11 @@ let state = {
       email: "olivia.wilson@example.com",
       department: "Analytics",
       position: "Senior",
-    }, // 10th employee
+    },
   ],
 };
 
-let nextId = 11; // Adjust nextId
+let nextId = 11;
 const listeners = new Set();
 
 // --- Private helper functions ---
@@ -148,7 +146,7 @@ export const store = {
   },
 
   /**
-   * Gets the current state. Use sparingly; prefer subscribing for reactivity.
+   * Gets the current state.
    * @returns {object} The current state.
    */
   getState() {
@@ -172,12 +170,10 @@ export const store = {
       console.error("Store: Cannot add employee without data or email.");
       return; // Basic validation
     }
-    // Basic check for uniqueness (email)
     if (state.employees.some((emp) => emp.email === employeeData.email)) {
       console.warn(
         `Store: Employee with email ${employeeData.email} already exists.`
       );
-      // In a real app, throw an error or handle this more gracefully
       alert(`Error: Employee with email ${employeeData.email} already exists.`); // Simple feedback
       return;
     }
@@ -195,7 +191,6 @@ export const store = {
    * @param {object} updatedData - The data to update.
    */
   updateEmployee(id, updatedData) {
-    // Basic check for uniqueness (email), excluding the current employee being edited
     if (
       updatedData.email &&
       state.employees.some(
@@ -211,8 +206,8 @@ export const store = {
       return;
     }
 
-    const updatedEmployees = state.employees.map(
-      (emp) => (emp.id === id ? { ...emp, ...updatedData, id } : emp) // Ensure ID isn't overwritten
+    const updatedEmployees = state.employees.map((emp) =>
+      emp.id === id ? { ...emp, ...updatedData, id } : emp
     );
     _updateState({ employees: updatedEmployees });
   },
@@ -227,4 +222,4 @@ export const store = {
   },
 };
 
-Object.freeze(store); // Prevent accidental modification of the store object itself
+Object.freeze(store);

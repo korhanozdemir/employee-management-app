@@ -1,64 +1,87 @@
 import { LitElement, html, css } from "lit";
 import { Router } from "@vaadin/router";
-
-import "./nav-menu.js"; // Import the navigation menu
+import "./nav-menu.js";
+import { t } from "../localization/localization.js";
 
 // Dynamic imports for route components are handled within router config
 
 class AppShell extends LitElement {
+  static properties = {
+    location: { state: true },
+  };
+
+  constructor() {
+    super();
+    this.location = window.location;
+    this._router = null;
+  }
+
   static styles = css`
     :host {
+      /* Define global theme colors here */
+      --primary-color: #ff6200;
+      --secondary-color: #ffb587;
+      /* Lighter secondary for hover states etc. */
+      --secondary-color-light-hover: #fff0e6;
+      --grey-color: #6c757d;
+      --light-grey-color: #adb5bd;
+
       display: block;
-      max-width: 1200px; /* Limit max width for larger screens */
-      margin: 0 auto; /* Center the content */
-      padding: 1rem;
+      margin: 0 auto;
       font-family: sans-serif;
+      background-color: var(--app-bg-color, #f8f8f8);
+      min-height: 100vh;
+      font-size: 14px;
+      color: #666;
     }
 
     header {
-      background-color: #f0f0f0;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border-radius: 4px;
+      background-color: #fff;
+      padding: 0.8rem 3rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
+    .header-left {
+      display: flex;
+      align-items: end;
+      gap: 0.5rem;
+    }
+
+    .logo {
+      height: 30px;
+      width: auto;
+      vertical-align: middle;
+    }
+
     h1 {
       margin: 0;
-      font-size: 1.5rem;
+      color: black;
+      line-height: 1;
     }
 
     main {
-      padding: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      min-height: 300px; /* Give some initial height */
+      padding: 0;
+      border: none;
+      min-height: auto;
     }
 
     footer {
-      margin-top: 2rem;
       text-align: center;
-      font-size: 0.9em;
+      font-size: inherit;
       color: #666;
+      padding: 1rem 0;
     }
 
-    /* Basic responsive adjustments */
     @media (max-width: 600px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      nav-menu {
-        margin-top: 0.5rem;
-        width: 100%; /* Make nav take full width */
-      }
-
       nav-menu > nav {
-        /* Target inner nav element */
-        justify-content: space-around; /* Space out links */
+        justify-content: space-around;
+      }
+      header {
+        padding: 0.8rem 1rem;
       }
     }
   `;
@@ -66,9 +89,9 @@ class AppShell extends LitElement {
   firstUpdated() {
     const outlet = this.shadowRoot.getElementById("outlet");
     if (outlet) {
-      const router = new Router(outlet);
-      router.setRoutes([
-        { path: "/", redirect: "/employees" }, // Redirect root to employee list
+      this._router = new Router(outlet);
+      this._router.setRoutes([
+        { path: "/", redirect: "/employees" },
         {
           path: "/employees",
           component: "employee-list",
@@ -99,6 +122,11 @@ class AppShell extends LitElement {
           },
         },
       ]);
+
+      // Listen for route changes
+      window.addEventListener("vaadin-router-location-changed", (event) => {
+        this.location = event.detail.location;
+      });
     } else {
       console.error("Router outlet element not found!");
     }
@@ -107,8 +135,11 @@ class AppShell extends LitElement {
   render() {
     return html`
       <header>
-        <h1>Employee Management</h1>
-        <nav-menu></nav-menu>
+        <div class="header-left">
+          <img src="/ING_logo.png" alt="${t("appTitle")} Logo" class="logo" />
+          <h1>${t("companyTitle")}</h1>
+        </div>
+        <nav-menu .location=${this.location}></nav-menu>
       </header>
 
       <main id="outlet">
@@ -116,7 +147,7 @@ class AppShell extends LitElement {
       </main>
 
       <footer>
-        <p>© 2024 Employee App</p>
+        <p>© ${new Date().getFullYear()}</p>
       </footer>
     `;
   }
