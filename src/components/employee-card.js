@@ -29,21 +29,30 @@ class EmployeeCard extends LitElement {
 
   // --- Date Formatting Helper (Updated for "DD Mon YYYY") ---
   _formatDate(dateString) {
-    if (!dateString) return "";
+    if (!dateString || !dateString.includes("-")) return dateString || ""; // Basic check and return empty/original
     try {
-      const date = new Date(dateString);
-      // Adjust for potential timezone offset to get the intended date parts
-      const utcDate = new Date(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate()
-      );
-      const day = utcDate.getUTCDate();
-      const month = MONTH_NAMES[utcDate.getUTCMonth()];
-      const year = utcDate.getUTCFullYear();
-      // Ensure day is two digits (though mockup shows single digit)
-      // Let's stick to mockup for now: `${day} ${month} ${year}`
-      return `${day} ${month} ${year}`;
+      // Split the date string and create a UTC date directly
+      const parts = dateString.split("-");
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2], 10);
+
+      // Validate parts
+      if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        console.error("Invalid date parts:", dateString);
+        return dateString;
+      }
+
+      // Create date object representing midnight UTC for that date
+      const date = new Date(Date.UTC(year, month, day));
+
+      // Now extract parts from the UTC date object
+      // No longer need the potentially problematic local timezone date
+      const displayDay = date.getUTCDate();
+      const displayMonth = MONTH_NAMES[date.getUTCMonth()];
+      const displayYear = date.getUTCFullYear();
+
+      return `${displayDay} ${displayMonth} ${displayYear}`;
     } catch (e) {
       console.error("Error formatting date:", dateString, e);
       return dateString; // Return original string on error

@@ -82,26 +82,44 @@ class PaginationControls extends LitElement {
 
     range.push(1);
 
-    if (current > delta + 2) {
-      range.push("...");
-    }
-
     let start = Math.max(2, current - delta);
     let end = Math.min(total - 1, current + delta);
+
+    if (start > 2) {
+      range.push("...");
+    }
 
     for (let i = start; i <= end; i++) {
       range.push(i);
     }
 
-    if (current < total - delta - 1) {
+    if (end < total - 1) {
       range.push("...");
     }
 
-    if (total > 1) {
-      range.push(total);
+    range.push(total);
+
+    const finalRange = [];
+    let lastPushed = null;
+    for (const item of range) {
+      if (item !== lastPushed || typeof item === "number") {
+        finalRange.push(item);
+        lastPushed = item;
+      }
     }
 
-    return [...new Set(range)];
+    if (finalRange[1] === "..." && finalRange[2] === 2) {
+      finalRange.splice(1, 1);
+    }
+
+    if (
+      finalRange[finalRange.length - 2] === "..." &&
+      finalRange[finalRange.length - 3] === total - 1
+    ) {
+      finalRange.splice(finalRange.length - 2, 1);
+    }
+
+    return finalRange;
   }
 
   _goToPage(pageNumber) {

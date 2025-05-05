@@ -221,5 +221,3 @@ export const store = {
     _updateState({ employees: updatedEmployees });
   },
 };
-
-Object.freeze(store);

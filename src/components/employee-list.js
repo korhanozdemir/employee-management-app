@@ -39,8 +39,15 @@ class EmployeeList extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._unsubscribe = store.subscribe((state) => {
+      console.log("[LISTENER] Received state:", JSON.stringify(state));
       const oldEmployeeCount = this._employees.length;
       this._employees = state.employees;
+      console.log(
+        "[LISTENER] Assigned this._employees:",
+        JSON.stringify(this._employees)
+      );
+      this.requestUpdate();
+
       if (this._employees.length !== oldEmployeeCount) {
         this._selectedIds = new Set();
         const totalPages = this._getTotalPages();
@@ -248,6 +255,10 @@ class EmployeeList extends LitElement {
   }
 
   get _filteredEmployees() {
+    console.log(
+      "[_filteredEmployees GETTER] this._employees:",
+      JSON.stringify(this._employees)
+    );
     if (!this._searchTerm) {
       return this._employees;
     }
