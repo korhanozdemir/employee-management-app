@@ -40,5 +40,11 @@
   "deleteSelectedButtonLabel": "Sil ({count})",
   "selectAllOnPage": "Sayfadaki tümünü Seç/Seçimi Kaldır",
   "confirmTitle": "Emin misiniz?",
-  "close": "Kapat"
+  "close": "Kapat",
+  "emailLabel": "E-posta:",
+  "phoneLabel": "Telefon:",
+  "departmentLabel": "Departman:",
+  "joinedLabel": "Katıldı:",
+  "edit": "Düzenle",
+  "delete": "Sil"
 } 

@@ -40,5 +40,11 @@
   "deleteSelectedButtonLabel": "Delete ({count})",
   "selectAllOnPage": "Select/Deselect all on page",
   "confirmTitle": "Are you sure?",
-  "close": "Close"
+  "close": "Close",
+  "emailLabel": "Email:",
+  "phoneLabel": "Phone:",
+  "departmentLabel": "Department:",
+  "joinedLabel": "Joined:",
+  "edit": "Edit",
+  "delete": "Delete"
 } 

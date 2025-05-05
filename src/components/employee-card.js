@@ -251,20 +251,20 @@ class EmployeeCard extends LitElement {
         </div>
 
         <div class="card-details">
-          <span class="detail-key">Email:</span>
+          <span class="detail-key">${t("emailLabel")}</span>
           <span class="detail-value"
             ><a href="mailto:${this.employee.email}"
               >${this.employee.email}</a
             ></span
           >
 
-          <span class="detail-key">Phone:</span>
+          <span class="detail-key">${t("phoneLabel")}</span>
           <span class="detail-value">${this.employee.phoneNumber}</span>
 
-          <span class="detail-key">Department:</span>
+          <span class="detail-key">${t("departmentLabel")}</span>
           <span class="detail-value">${this.employee.department}</span>
 
-          <span class="detail-key">Joined:</span>
+          <span class="detail-key">${t("joinedLabel")}</span>
           <span class="detail-value"
             >${this._formatDate(this.employee.dateOfEmployment)}</span
           >
@@ -273,9 +273,11 @@ class EmployeeCard extends LitElement {
         <hr class="card-divider" />
 
         <div class="card-actions">
-          <button class="btn-edit" @click=${this._handleEditClick}>Edit</button>
+          <button class="btn-edit" @click=${this._handleEditClick}>
+            ${t("edit")}
+          </button>
           <button class="btn-delete" @click=${this._handleDeleteClick}>
-            Delete
+            ${t("delete")}
           </button>
         </div>
       </div>

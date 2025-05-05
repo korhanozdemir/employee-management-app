@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 import { fixture, html } from "@open-wc/testing";
 // Import the component definition
 import "./employee-card.js";
+// Import t for labels
+import { t } from "../localization/localization.js";
 
 // Mock employee data
 const mockEmployee = {
@@ -63,16 +65,22 @@ describe("EmployeeCard", () => {
     // Let's query by text content relative to key for robustness if possible, or stick to indices carefully
     // Assuming indices based on current structure:
     expect(
-      el.shadowRoot.querySelector(".detail-key:nth-of-type(3)").textContent
-    ).toContain("Phone");
+      el.shadowRoot
+        .querySelector(".detail-key:nth-of-type(3)")
+        .textContent.trim()
+    ).toBe(t("phoneLabel"));
     expect(phoneElement.textContent.trim()).toBe(mockEmployee.phoneNumber);
     expect(
-      el.shadowRoot.querySelector(".detail-key:nth-of-type(5)").textContent
-    ).toContain("Department");
+      el.shadowRoot
+        .querySelector(".detail-key:nth-of-type(5)")
+        .textContent.trim()
+    ).toBe(t("departmentLabel"));
     expect(departmentElement.textContent.trim()).toBe(mockEmployee.department);
     expect(
-      el.shadowRoot.querySelector(".detail-key:nth-of-type(7)").textContent
-    ).toContain("Joined");
+      el.shadowRoot
+        .querySelector(".detail-key:nth-of-type(7)")
+        .textContent.trim()
+    ).toBe(t("joinedLabel"));
     expect(dateElement.textContent.trim()).toBe(expectedFormattedDate); // Check formatted date
   });
 
